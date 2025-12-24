@@ -145,6 +145,35 @@ func testCartService() async throws {
 }
 ```
 
+### Swift Testing (With Concurrency)
+
+Swift testing runs concurrently by default, requiring the Matcher to be isolated to the context of a test
+function. The MatcherTrait provides a way to isolate the Matcher to the context of a test function.
+
+```swift
+import Testing
+import Mockable
+import MockableTesting
+
+@Test(.matcher) // or @Suite(.matcher)
+func testCartService() async throws {
+    let mockURL = URL(string: "apple.com")
+    let mockError: ProductError = .notFound
+    let mockProduct = Product(name: "iPhone 15 Pro")
+
+    given(productService)
+        .fetch(for: .any).willReturn(mockProduct)
+        .checkout(with: .any).willThrow(mockError)
+
+    try await cartService.checkout(with: mockProduct, using: mockURL)
+
+    verify(productService)
+        .fetch(for: .value(mockProduct.id)).called(.atLeastOnce)
+        .checkout(with: .value(mockProduct)).called(.once)
+        .url(newValue: .value(mockURL)).setCalled(.once)
+}
+```
+
 ### Syntax
 
 **Mockable** has a declarative syntax that utilizes builders to construct `given`, `when`, and `verify` clauses. 
@@ -409,4 +438,3 @@ To open the package with Xcode in "development mode", you need the `MOCKABLE_DEV
 ## License
 
 **Mockable** is made available under the MIT License. Please see the [LICENSE](https://raw.githubusercontent.com/Kolos65/Mockable/main/LICENSE) file for more details.
-

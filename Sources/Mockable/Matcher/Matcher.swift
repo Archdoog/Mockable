@@ -35,6 +35,7 @@ public class Matcher: @unchecked Sendable {
     // MARK: Private Properties
 
     private var matchers: [MatcherType] = []
+    private let lock = NSRecursiveLock()
 
     private static let defaultInstance = Matcher()
 
@@ -62,6 +63,8 @@ public class Matcher: @unchecked Sendable {
     /// Note: In concurrent tests using `withMatcher`, this only affects the
     /// current task-local instance.
     public static func reset() {
+        current.lock.lock()
+        defer { current.lock.unlock() }
         current.matchers.removeAll()
         current.registerDefaultTypes()
         current.registerCustomTypes()
@@ -154,6 +157,8 @@ public class Matcher: @unchecked Sendable {
 extension Matcher {
     private func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
         let mirror = Mirror(reflecting: valueType)
+        lock.lock()
+        defer { lock.unlock() }
         matchers.append((mirror, match as Any))
     }
 
@@ -164,6 +169,8 @@ extension Matcher {
     private func register<T>(_ valueType: T.Type) where T: Equatable {
         let mirror = Mirror(reflecting: valueType)
         let comparator = comparator(for: T.self)
+        lock.lock()
+        defer { lock.unlock() }
         matchers.append((mirror, comparator as Any))
     }
 }
@@ -202,7 +209,9 @@ extension Matcher {
 
 extension Matcher {
     private func comparator(by mirror: Mirror) -> Any? {
-        matchers.reversed().first { matcher -> Bool in
+        lock.lock()
+        defer { lock.unlock() }
+        return matchers.reversed().first { matcher -> Bool in
             matcher.mirror.subjectType == mirror.subjectType
         }?.comparator
     }

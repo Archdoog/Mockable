@@ -50,7 +50,11 @@ let package = Package(
         .library(
             name: "Mockable",
             targets: ["Mockable"]
-        )
+        ),
+        .library(
+            name: "MockableTesting",
+            targets: ["MockableTesting"]
+        ),
     ],
     dependencies: devDependencies + [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.0.0"..<"603.0.0"),
@@ -80,7 +84,18 @@ let package = Package(
                 .enableUpcomingFeature("ExistentialAny")
             ],
             plugins: devPlugins
-        )
+        ),
+        .target(
+            name: "MockableTesting",
+            dependencies: [
+                "Mockable",
+            ],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency"),
+                .enableUpcomingFeature("ExistentialAny")
+            ],
+            plugins: devPlugins
+        ),
     ],
     swiftLanguageModes: [.v5, .v6]
 )

@@ -1,8 +1,9 @@
 #if DEBUG
 #if swift(>=6.1)
+import Mockable
 import Testing
 
-/// A test trait that provides test-isolated Matcher instances for Swift Testing.
+/// A test trait that provides a test-isolated Matcher instance.
 ///
 /// ## Usage
 ///
@@ -28,18 +29,21 @@ import Testing
 /// }
 /// ```
 public struct MatcherTrait: TestTrait, SuiteTrait, TestScoping {
-    public init() {}
-    
+
+    private let current: TaskLocal<Matcher>
+    private let matcher: Matcher
+
+    public init(current: TaskLocal<Matcher>, matcher: @autoclosure @escaping @Sendable () -> Matcher) {
+        self.current = current
+        self.matcher = matcher()
+    }
+
     public func provideScope(
         for test: Test,
         testCase: Test.Case?,
         performing function: @Sendable () async throws -> Void
     ) async throws {
-        // Create a new isolated Matcher for this test
-        let isolatedMatcher = Matcher.makeIsolated()
-        
-        // Execute the test with the isolated matcher
-        try await Matcher.$current.withValue(isolatedMatcher) {
+        try await current.withValue(matcher) {
             try await function()
         }
     }
@@ -47,12 +51,9 @@ public struct MatcherTrait: TestTrait, SuiteTrait, TestScoping {
 
 /// Provides test trait for default container
 extension Trait where Self == MatcherTrait {
-    /// Provides a test-isolated Matcher instance.
-    ///
-    /// Use this trait to ensure each test gets its own `Matcher` instance,
-    /// preventing race conditions in concurrent tests.
-    public static var matcher: Self { Self() }
+    public static var matcher: MatcherTrait {
+        .init(current: Matcher.$current, matcher: .makeIsolated())
+    }
 }
-
 #endif
 #endif
