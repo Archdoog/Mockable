@@ -32,7 +32,8 @@ public struct MatcherTrait: TestTrait, SuiteTrait, TestScoping {
 
     private let current: TaskLocal<Matcher>
     private let matcher: Matcher
-
+    private let isRecursive: Bool = true
+    
     public init(current: TaskLocal<Matcher>, matcher: @autoclosure @escaping @Sendable () -> Matcher) {
         self.current = current
         self.matcher = matcher()
