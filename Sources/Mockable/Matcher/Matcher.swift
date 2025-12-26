@@ -37,21 +37,19 @@ public class Matcher: @unchecked Sendable {
     private var matchers: [MatcherType] = []
     private let lock = NSRecursiveLock()
 
-    private static let defaultInstance = Matcher()
-
     /// Task-local storage for Matcher instances.
     ///
     /// By default, this uses a shared global instance. In concurrent tests,
     /// use `withMatcher` to provide test-isolated instances.
     #if swift(>=6)
-    @TaskLocal nonisolated(unsafe) public static var current: Matcher = defaultInstance
+    @TaskLocal public static var current: Matcher = Matcher()
     #else
-    public static var current: Matcher = defaultInstance
+    public static var current: Matcher = Matcher()
     #endif
 
     // MARK: Init
 
-    private init() {
+    public init() {
         registerDefaultTypes()
         registerCustomTypes()
     }
@@ -68,16 +66,6 @@ public class Matcher: @unchecked Sendable {
         current.matchers.removeAll()
         current.registerDefaultTypes()
         current.registerCustomTypes()
-    }
-
-    /// Creates a new isolated Matcher instance for testing.
-    ///
-    /// This method is primarily used by the `MatcherTrait` to provide test-isolated
-    /// Matcher instances in Swift Testing, preventing race conditions.
-    ///
-    /// - Returns: A new Matcher instance with default types registered.
-    public static func makeIsolated() -> Matcher {
-        Matcher()
     }
 
     // MARK: - Register

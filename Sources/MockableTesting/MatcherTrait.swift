@@ -53,7 +53,8 @@ public struct MatcherTrait: TestTrait, SuiteTrait, TestScoping {
 /// Provides test trait for default container
 extension Trait where Self == MatcherTrait {
     public static var matcher: MatcherTrait {
-        .init(current: Matcher.$current, matcher: .makeIsolated())
+        // Replace the Test's scoped Matcher with a new isolated instance.
+        .init(current: Matcher.$current, matcher: Matcher())
     }
 }
 #endif
