@@ -142,19 +142,19 @@ public class Matcher: @unchecked Sendable {
 
 // MARK: - Register
 
-extension Matcher {
-    private func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
+public extension Matcher {
+    func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
         let mirror = Mirror(reflecting: valueType)
         lock.lock()
         defer { lock.unlock() }
         matchers.append((mirror, match as Any))
     }
 
-    private func register<T>(_ valueType: T.Type.Type) {
+    func register<T>(_ valueType: T.Type.Type) {
         register(valueType, match: { _, _ in true })
     }
 
-    private func register<T>(_ valueType: T.Type) where T: Equatable {
+    func register<T>(_ valueType: T.Type) where T: Equatable {
         let mirror = Mirror(reflecting: valueType)
         let comparator = comparator(for: T.self)
         lock.lock()
