@@ -37,10 +37,6 @@ public class Matcher: @unchecked Sendable {
     private var matchers: [MatcherType] = []
     private let lock = NSRecursiveLock()
 
-    /// Task-local storage for Matcher instances.
-    ///
-    /// By default, this uses a shared global instance. In concurrent tests,
-    /// use `withMatcher` to provide test-isolated instances.
     #if swift(>=6)
     @TaskLocal public static var current: Matcher = Matcher()
     #else
@@ -57,15 +53,17 @@ public class Matcher: @unchecked Sendable {
     // MARK: - Reset
 
     /// Reset the current matcher by removing all registered types.
-    ///
-    /// Note: In concurrent tests using `withMatcher`, this only affects the
-    /// current task-local instance.
+    public func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        matchers.removeAll()
+        registerDefaultTypes()
+        registerCustomTypes()
+    }
+    
+    /// Reset the current matcher by removing all registered types.
     public static func reset() {
-        current.lock.lock()
-        defer { current.lock.unlock() }
-        current.matchers.removeAll()
-        current.registerDefaultTypes()
-        current.registerCustomTypes()
+        current.reset()
     }
 
     // MARK: - Register
