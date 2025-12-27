@@ -29,7 +29,7 @@ public struct MatcherTrait: TestTrait, SuiteTrait, TestScoping {
         performing function: @Sendable () async throws -> Void
     ) async throws {
         try await current.withValue(matcher) {
-            await registration(Matcher.current)
+            await registration(matcher)
             try await function()
         }
     }
