@@ -154,9 +154,9 @@ public extension Matcher {
 
     func register<T>(_ valueType: T.Type) where T: Equatable {
         let mirror = Mirror(reflecting: valueType)
-        let comparator = comparator(for: T.self)
         lock.lock()
         defer { lock.unlock() }
+        let comparator = comparator(for: T.self)
         matchers.append((mirror, comparator as Any))
     }
 }
