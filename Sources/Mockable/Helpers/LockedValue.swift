@@ -16,6 +16,12 @@ final class LockedValue<Value>: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var didSet: ((Value) -> Void)?
 
+    /// When a `withValue(_:)` call is active we keep a working copy here. Nested
+    /// `withValue(_:)` calls operate on the same working copy so inner changes
+    /// are not lost when the outer call commits.
+    private var activeTransactionValue: Value?
+    private var activeTransactionDepth: Int = 0
+
     /// Initializes lock-isolated state around a value.
     ///
     /// - Parameter value: A value to isolate with a lock.
@@ -25,7 +31,7 @@ final class LockedValue<Value>: @unchecked Sendable {
 
     subscript<Subject>(dynamicMember keyPath: KeyPath<Value, Subject>) -> Subject {
         self.lock.criticalRegion {
-            self._value[keyPath: keyPath]
+            (self.activeTransactionValue ?? self._value)[keyPath: keyPath]
         }
     }
 
@@ -49,12 +55,28 @@ final class LockedValue<Value>: @unchecked Sendable {
         _ operation: (inout Value) throws -> T
     ) rethrows -> T {
         try self.lock.criticalRegion {
-            var value = self._value
-            defer {
-                self._value = value
-                self.didSet?(self._value)
+            // If this is the outermost call we create a working copy and commit
+            // it when the outermost call completes. Nested calls share the same
+            // working copy so inner modifications are preserved.
+            let isRoot = self.activeTransactionDepth == 0
+            if isRoot {
+                self.activeTransactionValue = self._value
             }
-            return try operation(&value)
+            self.activeTransactionDepth += 1
+            defer {
+                self.activeTransactionDepth -= 1
+                if isRoot {
+                    // Commit working copy to storage and notify.
+                    self._value = self.activeTransactionValue!
+                    let newValue = self._value
+                    self.activeTransactionValue = nil
+                    self.didSet?(newValue)
+                }
+            }
+
+            // Safe to force-unwrap: either we've just created the working copy
+            // for the root call, or a root call has already created it.
+            return try operation(&self.activeTransactionValue!)
         }
     }
 
@@ -89,8 +111,15 @@ final class LockedValue<Value>: @unchecked Sendable {
     /// - Parameter newValue: The value to replace the current isolated value with.
     func setValue(_ newValue: @autoclosure () throws -> Value) rethrows {
         try self.lock.criticalRegion {
-            self._value = try newValue()
-            self.didSet?(self._value)
+            let value = try newValue()
+            // If a transaction is active, modify the working copy so the change
+            // becomes part of the transaction and will be committed by the outermost call.
+            if self.activeTransactionDepth > 0 {
+                self.activeTransactionValue = value
+            } else {
+                self._value = value
+                self.didSet?(self._value)
+            }
         }
     }
 }
@@ -98,7 +127,7 @@ final class LockedValue<Value>: @unchecked Sendable {
 extension LockedValue where Value: Sendable {
     var value: Value {
         self.lock.criticalRegion {
-            self._value
+            self.activeTransactionValue ?? self._value
         }
     }
 
