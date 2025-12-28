@@ -195,11 +195,12 @@ extension Matcher {
 
 extension Matcher {
     private func comparator(by mirror: Mirror) -> Any? {
-        matchers.withValue { matchers in
-            return matchers.reversed().first { matcher -> Bool in
-                matcher.mirror.subjectType == mirror.subjectType
-            }?.comparator
-        }
+        // Take a quick snapshot of the registered matchers while holding the
+        // lock, then perform the (read-only) search on the snapshot outside of
+        // the lock. This minimizes lock hold time and reduces the surface for
+        // accidental re-entrancy problems.
+        let snapshot = matchers.withValue { matchers in matchers }
+        return snapshot.reversed().first { $0.mirror.subjectType == mirror.subjectType }?.comparator
     }
 
     private func sequenceComparator<T: Sequence>(
