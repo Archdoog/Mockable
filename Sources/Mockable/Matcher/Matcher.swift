@@ -54,11 +54,10 @@ public class Matcher: @unchecked Sendable {
 
     /// Reset the current matcher by removing all registered types.
     public func reset() {
-        matchers.withValue { matchers in
-            matchers.removeAll()
-            registerDefaultTypes()
-            registerCustomTypes()
-        }
+        // Clear storage up-front to avoid re-entering `withValue(_:)` during registration.
+        matchers.setValue([])
+        registerDefaultTypes()
+        registerCustomTypes()
     }
 
     /// Reset the current matcher by removing all registered types.
