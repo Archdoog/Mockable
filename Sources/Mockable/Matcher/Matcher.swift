@@ -37,7 +37,7 @@ public class Matcher: @unchecked Sendable {
 
     private var matchers: LockedValue<[MatcherType]> = .init([])
 
-    #if swift(>=6)
+    #if swift(>=5.5)
     @TaskLocal public static var current: Matcher = Matcher()
     #else
     public static var current: Matcher = Matcher()
@@ -152,7 +152,7 @@ public extension Matcher {
         register(valueType, match: { _, _ in true })
     }
 
-    
+
     func register<T>(_ valueType: T.Type) where T: Equatable {
         let mirror = Mirror(reflecting: valueType)
         let comparator = comparator(for: T.self)
