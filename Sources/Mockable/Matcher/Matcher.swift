@@ -7,8 +7,33 @@
 
 import Foundation
 
+final class Matchers {
+    typealias MatcherType = (mirror: Mirror, comparator: Any)
+    
+    private var lock = NSRecursiveLock()
+    private var matchers: [MatcherType] = []
+    
+    func reset() {
+        lock.withLock {
+            matchers = []
+        }
+    }
+    
+    func reversed() -> [MatcherType] {
+        lock.withLock {
+            matchers.reversed()
+        }
+    }
+    
+    func append(_ matcher: MatcherType) {
+        lock.withLock {
+            matchers.append(matcher)
+        }
+    }
+}
+
 /// A utility for defining matchers used in mock assertions.
-public class Matcher {
+public class Matcher: @unchecked Sendable {
 
     // MARK: Public Types
 
@@ -28,23 +53,19 @@ public class Matcher {
     /// - Returns: `true` if the elements match according to the comparison criteria; otherwise, `false`.
     public typealias ElementComparator<T: Sequence> = (T.Element, T.Element) -> Bool
 
-    // MARK: Private Types
-
-    private typealias MatcherType = (mirror: Mirror, comparator: Any)
-
     // MARK: Private Properties
 
-    private var matchers: [MatcherType] = []
+    let matchers = Matchers()
 
-    #if swift(>=6)
-    nonisolated(unsafe) private static var `default` = Matcher()
+    #if swift(>=5.5)
+    @TaskLocal public static var current: Matcher = Matcher()
     #else
-    private static var `default` = Matcher()
+    public static var current: Matcher = Matcher()
     #endif
 
     // MARK: Init
 
-    private init() {
+    public init() {
         registerDefaultTypes()
         registerCustomTypes()
     }
@@ -53,7 +74,7 @@ public class Matcher {
 
     /// Reset the default state of the matcher by removing all registered types.
     public static func reset() {
-        `default` = Matcher()
+        Self.current.matchers.reset()
     }
 
     // MARK: - Register
@@ -69,21 +90,21 @@ public class Matcher {
     ///   - valueType: compared type
     ///   - match: comparator closure
     public static func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
-        Self.default.register(valueType, match: match)
+        Self.current.register(valueType, match: match)
     }
 
     /// Registers comparator for type, like comparing Int.self to Int.self. These types of comparators always returns true. Register like: `Matcher.default.register(CustomType.Type.self)`
     ///
     /// - Parameter valueType: Type.Type.self
     public static func register<T>(_ valueType: T.Type.Type) {
-        Self.default.register(valueType)
+        Self.current.register(valueType)
     }
 
     /// Register default comparator for Equatable types. Required for generic mocks to work.
     ///
     /// - Parameter valueType: Equatable type
     public static func register<T>(_ valueType: T.Type) where T: Equatable {
-        Self.default.register(valueType)
+        Self.current.register(valueType)
     }
 
     // MARK: - Comparator
@@ -98,7 +119,7 @@ public class Matcher {
     /// - Parameter valueType: compared type
     /// - Returns: comparator closure
     public static func comparator<T>(for valueType: T.Type) -> Comparator<T>? {
-        Self.default.comparator(for: valueType)
+        Self.current.comparator(for: valueType)
     }
 
     /// Default Equatable comparator, compares if elements are equal.
@@ -106,7 +127,7 @@ public class Matcher {
     /// - Parameter valueType: Equatable type
     /// - Returns: comparator closure
     public static func comparator<T>(for valueType: T.Type) -> Comparator<T>? where T: Equatable {
-        Self.default.comparator(for: valueType)
+        Self.current.comparator(for: valueType)
     }
 
     /// Default Equatable Sequence comparator, compares count, and then for every element equal element.
@@ -114,7 +135,7 @@ public class Matcher {
     /// - Parameter valueType: Equatable Sequence type
     /// - Returns: comparator closure
     public static func comparator<T>(for valueType: T.Type) -> Comparator<T>? where T: Equatable, T: Sequence {
-        Self.default.comparator(for: valueType)
+        Self.current.comparator(for: valueType)
     }
 
     /// Default Sequence comparator, compares count, and then depending on sequence type:
@@ -124,7 +145,7 @@ public class Matcher {
     /// - Parameter valueType: Sequence type
     /// - Returns: comparator closure
     public static func comparator<T>(for valueType: T.Type) -> Comparator<T>? where T: Sequence {
-        Self.default.comparator(for: valueType)
+        Self.current.comparator(for: valueType)
     }
 }
 
