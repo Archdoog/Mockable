@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 
 /// A utility for defining matchers used in mock assertions.
 public class Matcher: @unchecked Sendable {
@@ -34,8 +35,7 @@ public class Matcher: @unchecked Sendable {
 
     // MARK: Private Properties
 
-    private var matchers: [MatcherType] = []
-    private let lock = NSRecursiveLock()
+    private var matchers: LockedValue<[MatcherType]> = .init([])
 
     #if swift(>=6)
     @TaskLocal public static var current: Matcher = Matcher()
@@ -54,13 +54,13 @@ public class Matcher: @unchecked Sendable {
 
     /// Reset the current matcher by removing all registered types.
     public func reset() {
-        lock.lock()
-        defer { lock.unlock() }
-        matchers.removeAll()
-        registerDefaultTypes()
-        registerCustomTypes()
+        matchers.withValue { matchers in
+            matchers.removeAll()
+            registerDefaultTypes()
+            registerCustomTypes()
+        }
     }
-    
+
     /// Reset the current matcher by removing all registered types.
     public static func reset() {
         current.reset()
@@ -142,10 +142,10 @@ public class Matcher: @unchecked Sendable {
 
 public extension Matcher {
     func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
-        let mirror = Mirror(reflecting: valueType)
-        lock.lock()
-        defer { lock.unlock() }
-        matchers.append((mirror, match as Any))
+        matchers.withValue { matchers in
+            let mirror = Mirror(reflecting: valueType)
+            matchers.append((mirror, match as Any))
+        }
     }
 
     func register<T>(_ valueType: T.Type.Type) {
@@ -153,11 +153,11 @@ public extension Matcher {
     }
 
     func register<T>(_ valueType: T.Type) where T: Equatable {
-        let mirror = Mirror(reflecting: valueType)
-        lock.lock()
-        defer { lock.unlock() }
-        let comparator = comparator(for: T.self)
-        matchers.append((mirror, comparator as Any))
+        matchers.withValue { matchers in
+            let mirror = Mirror(reflecting: valueType)
+            let comparator = comparator(for: T.self)
+            matchers.append((mirror, comparator as Any))
+        }
     }
 }
 
@@ -195,11 +195,11 @@ extension Matcher {
 
 extension Matcher {
     private func comparator(by mirror: Mirror) -> Any? {
-        lock.lock()
-        defer { lock.unlock() }
-        return matchers.reversed().first { matcher -> Bool in
-            matcher.mirror.subjectType == mirror.subjectType
-        }?.comparator
+        matchers.withValue { matchers in
+            return matchers.reversed().first { matcher -> Bool in
+                matcher.mirror.subjectType == mirror.subjectType
+            }?.comparator
+        }
     }
 
     private func sequenceComparator<T: Sequence>(
