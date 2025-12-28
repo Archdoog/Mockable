@@ -74,6 +74,8 @@ public final class Matcher: Sendable {
 
     public func reset() {
         matchers.reset()
+        registerDefaultTypes()
+        registerCustomTypes()
     }
     
     /// Reset the default state of the matcher by removing all registered types.
