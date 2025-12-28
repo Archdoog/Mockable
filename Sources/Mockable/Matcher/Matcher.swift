@@ -72,9 +72,13 @@ public class Matcher: @unchecked Sendable {
 
     // MARK: - Reset
 
+    public func reset() {
+        matchers.reset()
+    }
+    
     /// Reset the default state of the matcher by removing all registered types.
     public static func reset() {
-        Self.current.matchers.reset()
+        Self.current.reset()
     }
 
     // MARK: - Register
@@ -151,17 +155,17 @@ public class Matcher: @unchecked Sendable {
 
 // MARK: - Register
 
-extension Matcher {
-    private func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
+public extension Matcher {
+    func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
         let mirror = Mirror(reflecting: valueType)
         matchers.append((mirror, match as Any))
     }
 
-    private func register<T>(_ valueType: T.Type.Type) {
+    func register<T>(_ valueType: T.Type.Type) {
         register(valueType, match: { _, _ in true })
     }
 
-    private func register<T>(_ valueType: T.Type) where T: Equatable {
+    func register<T>(_ valueType: T.Type) where T: Equatable {
         let mirror = Mirror(reflecting: valueType)
         let comparator = comparator(for: T.self)
         matchers.append((mirror, comparator as Any))
