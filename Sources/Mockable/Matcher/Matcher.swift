@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class Matchers {
+final class Matchers: @unchecked Sendable {
     typealias MatcherType = (mirror: Mirror, comparator: Any)
     
     private var lock = NSRecursiveLock()
@@ -21,7 +21,7 @@ final class Matchers {
     
     func reversed() -> [MatcherType] {
         lock.withLock {
-            matchers.reversed()
+            Array(matchers.reversed())
         }
     }
     
@@ -33,7 +33,7 @@ final class Matchers {
 }
 
 /// A utility for defining matchers used in mock assertions.
-public class Matcher: @unchecked Sendable {
+public final class Matcher: Sendable {
 
     // MARK: Public Types
 
