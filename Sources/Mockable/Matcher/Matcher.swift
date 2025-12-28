@@ -142,8 +142,8 @@ public class Matcher: @unchecked Sendable {
 
 public extension Matcher {
     func register<T>(_ valueType: T.Type, match: @escaping Comparator<T>) {
+        let mirror = Mirror(reflecting: valueType)
         matchers.withValue { matchers in
-            let mirror = Mirror(reflecting: valueType)
             matchers.append((mirror, match as Any))
         }
     }
@@ -152,10 +152,11 @@ public extension Matcher {
         register(valueType, match: { _, _ in true })
     }
 
+    
     func register<T>(_ valueType: T.Type) where T: Equatable {
+        let mirror = Mirror(reflecting: valueType)
+        let comparator = comparator(for: T.self)
         matchers.withValue { matchers in
-            let mirror = Mirror(reflecting: valueType)
-            let comparator = comparator(for: T.self)
             matchers.append((mirror, comparator as Any))
         }
     }
