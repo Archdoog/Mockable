@@ -54,10 +54,14 @@ public class Matcher: @unchecked Sendable {
 
     /// Reset the current matcher by removing all registered types.
     public func reset() {
-        // Clear storage up-front to avoid re-entering `withValue(_:)` during registration.
-        matchers.setValue([])
-        registerDefaultTypes()
-        registerCustomTypes()
+        // Perform the reset as a single transaction. Nested registrations may
+        // re-enter the matchers storage; the `LockedValue` supports re-entrancy
+        // so inner registrations are applied to the same working buffer.
+        matchers.withValue { matchers in
+            matchers.removeAll()
+            registerDefaultTypes()
+            registerCustomTypes()
+        }
     }
 
     /// Reset the current matcher by removing all registered types.

@@ -58,4 +58,37 @@ final class LockedValueTests: XCTestCase {
 
         XCTAssertEqual(lv.value, tasks * incrementsPerTask, "All increments must be accounted for")
     }
+
+    func test_reentrant_nested_mutations_are_preserved() {
+        let lv = LockedValue(0)
+        lv.withValue { value in
+            value += 1
+            lv.withValue { value in
+                value += 1
+            }
+        }
+        XCTAssertEqual(lv.value, 2, "Nested mutations must be preserved")
+    }
+
+    func test_withValue_allows_nested_writes_on_collections() {
+        let lv = LockedValue([Int]())
+        lv.withValue { arr in
+            arr.append(1)
+            lv.withValue { arr in
+                arr.append(2)
+            }
+        }
+        XCTAssertEqual(lv.value, [1, 2], "Nested collection mutations must be preserved")
+    }
+
+    func test_setValue_inside_transaction_preserved_until_commit() {
+        let lv = LockedValue(0)
+        lv.withValue { value in
+            // Update the working buffer via `setValue(_:)` while inside the
+            // transaction and then mutate it again via the inout parameter.
+            lv.setValue(5)
+            value += 1
+        }
+        XCTAssertEqual(lv.value, 6, "setValue(_:) inside a transaction must update the working buffer")
+    }
 }
